@@ -1,0 +1,68 @@
+TARGET	= ipac
+
+# Application source en include includes
+SRC_DIR	= ./source
+INC_DIR = ./include
+
+# NutOS location (includes and libs)
+NUT_INC = /home/michel/Downloads/ethernut-4.3.3/nut/include
+NUT_BUILD_INC = /home/michel/Downloads/ethernut-4.3.3/nut/include
+NUT_LIB_DIR = /home/michel/Downloads/ethernut-4.3.3/nut/lib
+
+# WinAvr includes
+AVR_INC = /bin/lib/avr
+
+
+# Compiler, assembler & linker (flags)
+CC		= 	avr-gcc
+LD		= 	avr-gcc
+CFLAGS	= 	-mmcu=atmega2561 -Os -Wall -Wstrict-prototypes -DNUT_CPU_FREQ=14745600 \
+			-D__HARVARD_ARCH__ -DNUTOS_VERSION=433 \
+			-Wa,-ahlms=$(SRC_DIR)/$*lst
+ASFLAGS = 	-mmcu=atmega2561 -I. -x assembler-with-cpp -Wa,-ahlms=$(SRC_DIR)/$*lst,-gstabs
+LDFLAGS	=	-mmcu=atmega2561 -Wl,--defsym=main=0,-Map=TIStreamer.map,--cref
+
+
+# =================================================================================
+include Makefile.targets
+
+# Alle source files in de ./source dir
+SRCS =	$(addprefix $(SRC_DIR)/,$(CFILES))
+OBJS = 	$(SRCS:.c=.o)
+
+NUT_LIBS = $(NUT_LIB_DIR)/nutinit.o -lnutpro -lnutfs -lnutos -lnutdev -lnutarch -lnutnet -lnutcrt -lnutdev
+
+
+# Alle includes (header files) in de ./header dir
+INCS =	$(addprefix $(INC_DIR)/,$(HFILES))
+
+# Linking rule. All *.o to elf file. Then convert to *.hex
+$(TARGET):	$(OBJS)
+	$(LD) $(OBJS) $(LDFLAGS) -L$(NUT_LIB_DIR) $(NUT_LIBS) -o $@.elf
+	avr-objcopy -O ihex $@.elf $@.hex
+#	hex2bin -ebin $@.hex
+
+# Compiling the objs's. avr-gcc autocalls assembler
+$(SRC_DIR)/%o:	$(SRC_DIR)/%c
+	$(CC) -c $< $(CFLAGS) -I$(INC_DIR) -I$(NUT_INC) -I$(AVR_INC) -o $@
+
+
+.PHONY: all
+all: $(TARGET)
+
+.PHONY: linux
+linux: all
+	cp ipac.hex ~/Dropbox/nut_hex/
+
+debug:
+
+	@echo $(OBJS)
+
+
+.PHONY: clean
+clean:
+	-rm -f $(OBJS)
+	-rm -f $(SRCS:.c=.lst)
+	-rm -f *.hex *.elf *.map *.bin
+
+
